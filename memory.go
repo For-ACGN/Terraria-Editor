@@ -59,12 +59,13 @@ type MemoryBasicInformation struct {
 // VirtualQueryEx is used to retrieve information about a range of pages in the virtual address
 // space of the calling process. To retrieve information about a range of pages in the address
 // space of another process, use the VirtualQueryEx function. // #nosec
-func VirtualQueryEx(addr uintptr) (*MemoryBasicInformation, error) {
+func VirtualQueryEx(hProcess windows.Handle, addr uintptr, mbi *MemoryBasicInformation) error {
 	const name = "VirtualQueryEx"
-	var mbi MemoryBasicInformation
-	ret, _, err := procVirtualQueryEx.Call(addr, uintptr(unsafe.Pointer(&mbi)), unsafe.Sizeof(mbi))
+	ret, _, err := procVirtualQueryEx.Call(
+		uintptr(hProcess), addr, uintptr(unsafe.Pointer(mbi)), unsafe.Sizeof(MemoryBasicInformation{}),
+	)
 	if ret == 0 {
-		return nil, newErrorf(name, err, "failed to query memory information at 0x%X", addr)
+		return newErrorf(name, err, "failed to query memory information at 0x%X", addr)
 	}
-	return &mbi, nil
+	return nil
 }

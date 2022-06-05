@@ -15,5 +15,8 @@ func main() {
 	})
 	window.CenterOnScreen()
 
+	// role info runtime data
+	// 00 02 00 01 58 0A 00 00 88 25 40 00 05 00 00 00 F0 65
+
 	window.ShowAndRun()
 }
