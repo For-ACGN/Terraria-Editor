@@ -29,7 +29,7 @@ func main() {
 	window := App.NewWindow("Terraria Editor")
 	window.Resize(fyne.Size{
 		Width:  600,
-		Height: 300,
+		Height: 400,
 	})
 	window.CenterOnScreen()
 
@@ -37,7 +37,7 @@ func main() {
 	debugText.Move(fyne.NewPos(10, 10))
 	debugText.Resize(fyne.Size{
 		Width:  300,
-		Height: 100,
+		Height: 300,
 	})
 
 	open := widget.NewButton("Open", func() {
@@ -85,26 +85,20 @@ func openProcess() error {
 	return nil
 }
 
-type role struct {
-	_  [0x03E4]byte
-	HP uint32
-	MP uint32
-}
-
-func scanRoleList(debugText *widget.Entry) (interface{}, error) {
+func scanRoleList(dt *widget.Entry) (interface{}, error) {
+	h := hProcess.Load().(windows.Handle)
 	// scan runtime data pointer about role structure
 	roleRT := []byte{
 		0x00, 0x02, 0x00, 0x01, 0x58, 0x0A, 0x00, 0x00,
 		0x88, 0x25, 0x40, 0x00, 0x05, 0x00, 0x00, 0x00,
 		0xF0, 0x65,
 	}
-	h := hProcess.Load().(windows.Handle)
 	result, err := editor.ScanMemory(h, 0x00000000, 0x7FFFFFFF, roleRT, nil)
 	if err != nil {
 		return nil, err
 	}
 	if len(result) != 1 {
-		debugText.SetText(strconv.Itoa(len(result)))
+		dt.SetText(strconv.Itoa(len(result)))
 		return nil, errors.New("failed to scan runtime data pointer about role structure")
 	}
 	roleStructPtr := make([]byte, 4)
@@ -119,19 +113,65 @@ func scanRoleList(debugText *widget.Entry) (interface{}, error) {
 		val := fmt.Sprintf("0x%X  %v\n", result[i].Address, result[i].Value)
 		text.WriteString(val)
 	}
-	debugText.SetText(text.String())
+	dt.SetText(text.String())
 	// TODO find self role structure pointer
 	selfRoleAddr := uintptr(0x3933AFF4)
-	selfRole := role{}
 
-	_, err = editor.ReadProcessMemory(h,
-		selfRoleAddr,
-		(*byte)(unsafe.Pointer(&selfRole)),
-		unsafe.Sizeof(selfRole),
-	)
+	err = readRoleInfo(dt, selfRoleAddr)
 	if err != nil {
 		return nil, err
 	}
-
 	return nil, nil
 }
+
+type role struct {
+	_ [0xD0]byte
+
+	Item uint32
+
+	_ [0x0310]byte
+
+	HP uint32
+	MP uint32
+}
+
+type item struct {
+}
+
+func readRoleInfo(dt *widget.Entry, addr uintptr) error {
+	h := hProcess.Load().(windows.Handle)
+	selfRole := role{}
+
+	_, err := editor.ReadProcessMemory(h, addr,
+		(*byte)(unsafe.Pointer(&selfRole)), unsafe.Sizeof(selfRole),
+	)
+	if err != nil {
+		return err
+	}
+
+	basic := fmt.Sprintf("HP: %d, MP: %d\n", selfRole.HP, selfRole.MP)
+	basic += fmt.Sprintf("0x%X\n", selfRole.Item)
+
+	// read role item
+	var items [5*10 + 8 + 1]uint32
+	_, err = editor.ReadProcessMemory(h, uintptr(selfRole.Item+8),
+		(*byte)(unsafe.Pointer(&items[0])), uintptr(len(items)*4),
+	)
+	if err != nil {
+		return err
+	}
+	var itemAddrs string
+	for i := 0; i < len(items); i++ {
+		itemAddrs += fmt.Sprintf("0x%X\n", items[i])
+	}
+
+	text := strings.Builder{}
+	text.WriteString(basic)
+	text.WriteString(itemAddrs)
+	dt.SetText(text.String())
+	return nil
+}
+
+// func readRoleItem(dt *widget.Entry, addr uintptr) error {
+//
+// }
