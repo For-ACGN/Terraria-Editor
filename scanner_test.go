@@ -1,7 +1,6 @@
-package editer
+package editor
 
 import (
-	"bytes"
 	"fmt"
 	"testing"
 
@@ -30,10 +29,10 @@ func TestScanMemory(t *testing.T) {
 	for i := 0; i < len(result); i++ {
 		fmt.Printf("0x%X  %v\n", result[i].Address, result[i].Value)
 
-		data := bytes.Repeat([]byte{'F', 0x00}, 12)
-
-		_, err = WriteProcessMemory(hProcess, result[i].Address, data)
-		require.NoError(t, err)
+		// data := bytes.Repeat([]byte{'F', 0x00}, 12)
+		//
+		// _, err = WriteProcessMemory(hProcess, result[i].Address, data)
+		// require.NoError(t, err)
 	}
 
 }
